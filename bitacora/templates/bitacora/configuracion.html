@@ -1,0 +1,71 @@
+{% extends 'bitacora/master.html' %}
+
+{% block title %}Configuración del Sistema{% endblock %}
+
+{% block content %}
+<div class="p-4 sm:p-6 md:p-8 max-w-4xl mx-auto">
+    <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+        
+        <div class="mb-6 pb-4 border-b border-gray-200">
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">
+                <i class="fas fa-cog mr-3 text-yellow-500"></i>Configuración del Sistema
+            </h1>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="mb-4 p-4 text-sm rounded-lg {% if message.tags == 'success' %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="post" action="{% url 'bitacora:configuracion' %}" class="space-y-6">
+            {% csrf_token %}
+            
+            <!-- Sección de Tolerancia -->
+            <div class="p-5 border border-gray-200 rounded-lg">
+                <h2 class="text-lg font-semibold text-gray-700 mb-3">Asistencia</h2>
+                <div>
+                    <label for="{{ form.minutos_tolerancia_entrada.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900">Minutos de tolerancia para retardo</label>
+                    {{ form.minutos_tolerancia_entrada }}
+                    {% if form.minutos_tolerancia_entrada.help_text %}
+                    <p class="mt-2 text-xs text-gray-500">{{ form.minutos_tolerancia_entrada.help_text }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Sección de Administradores -->
+            <div class="p-5 border border-gray-200 rounded-lg">
+                <h2 class="text-lg font-semibold text-gray-700 mb-3">Añadir Nuevo Administrador</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="{{ form.nuevo_admin_usuario.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900">Nombre de Usuario</label>
+                        {{ form.nuevo_admin_usuario }}
+                        {% if form.nuevo_admin_usuario.help_text %}
+                        <p class="mt-2 text-xs text-gray-500">{{ form.nuevo_admin_usuario.help_text }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.nuevo_admin_password.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900">Contraseña</label>
+                        {{ form.nuevo_admin_password }}
+                    </div>
+                </div>
+                 {% if form.non_field_errors or form.nuevo_admin_usuario.errors or form.nuevo_admin_password.errors %}
+                <div class="mt-3 text-sm text-red-600">
+                    {{ form.non_field_errors }}
+                    {{ form.nuevo_admin_usuario.errors }}
+                    {{ form.nuevo_admin_password.errors }}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="flex justify-end pt-4">
+                <button type="submit" class="text-white bg-red-600 hover:bg-red-700 font-medium rounded-lg text-sm px-6 py-3 text-center">
+                    <i class="fas fa-save mr-2"></i>Guardar Cambios
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

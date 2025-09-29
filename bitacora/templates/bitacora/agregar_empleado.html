@@ -1,0 +1,66 @@
+{% extends 'bitacora/master.html' %}
+
+{% block title %}Añadir Nuevo Empleado{% endblock %}
+
+{% block content %}
+<div class="p-4 sm:p-6 md:p-8">
+    <div class="bg-gray-800 bg-opacity-80 backdrop-blur-sm rounded-xl p-6 shadow-2xl border border-gray-700 max-w-2xl mx-auto">
+        
+        <div class="mb-6 pb-4 border-b border-gray-600">
+            <h1 class="text-2xl sm:text-3xl font-bold text-white">
+                <i class="fas fa-user-plus mr-3 text-yellow-400"></i>Añadir Nuevo Empleado
+            </h1>
+        </div>
+
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                    <label for="{{ form.nombre.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-300">Nombre</label>
+                    {{ form.nombre }}
+                </div>
+                <div>
+                    <label for="{{ form.apellido.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-300">Apellido</label>
+                    {{ form.apellido }}
+                </div>
+            </div>
+
+            <div>
+                <label for="{{ form.puesto.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-300">Puesto</label>
+                {{ form.puesto }}
+            </div>
+            
+            <div>
+                <label for="{{ form.telefono.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-300">Teléfono</label>
+                {{ form.telefono }}
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                    <label for="{{ form.hora_entrada_supuesta.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-300">Hora de Entrada Supuesta</label>
+                    {{ form.hora_entrada_supuesta }}
+                </div>
+                <div>
+                    <label for="{{ form.hora_salida_supuesta.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-300">Hora de Salida Supuesta</label>
+                    {{ form.hora_salida_supuesta }}
+                </div>
+            </div>
+
+            {% if form.errors %}
+                <div class="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded-lg" role="alert">
+                    <strong class="font-bold">Error:</strong>
+                    <span class="block sm:inline">Por favor, corrige los errores indicados.</span>
+                </div>
+            {% endif %}
+
+            <div class="flex justify-end pt-4">
+                <a href="{% url 'bitacora:panel_empleados' %}" class="text-gray-300 hover:text-white font-bold py-2 px-4 rounded-lg mr-4 transition">Cancelar</a>
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition duration-300 shadow-lg">
+                    <i class="fas fa-save mr-2"></i>Guardar Empleado
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-gray-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Panel de Asistencia{% endblock %} - Mixtemiches</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+        }
+        /* Estilos para el scrollbar (tema claro) */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e5e7eb; /* Gris claro */
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #f59e0b; /* Amarillo */
+            border-radius: 10px;
+            border: 2px solid #e5e7eb; /* Borde del color del track */
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: #d97706; /* Amarillo más oscuro */
+        }
+    </style>
+</head>
+<body class="h-full font-sans antialiased text-gray-900 bg-gray-100">
+    
+    <!-- Overlay for mobile sidebar -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-60 z-30 hidden sm:hidden"></div>
+
+    <div class="flex h-full">
+        <!-- Sidebar (se mantiene oscuro para contraste) -->
+        <aside id="sidebar" class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full sm:translate-x-0 bg-gray-900 border-r border-gray-800 flex flex-col" aria-label="Sidebar">
+            <div class="h-full px-3 py-4 overflow-y-auto flex flex-col">
+                <div class="p-4 flex items-center justify-between">
+                    <a href="{% url 'bitacora:panel_empleados' %}" class="flex items-center">
+                        <span class="text-2xl font-bold text-white">Mixtemiches</span>
+                        <span class="ml-2 px-2 py-0.5 bg-yellow-400 text-black text-xs font-bold rounded">Panel</span>
+                    </a>
+                    <!-- Botón para cerrar en móvil -->
+                    <button id="close-sidebar-btn" type="button" class="text-gray-400 hover:text-white sm:hidden">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+
+                <ul class="space-y-2 font-medium pt-4 flex-grow">
+                    <li>
+                        <a href="{% url 'bitacora:panel_empleados' %}" class="flex items-center p-2 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white group">
+                           <i class="fas fa-users w-5 h-5 text-gray-400 group-hover:text-yellow-400 transition-colors"></i>
+                           <span class="ml-3">Empleados</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'bitacora:reportes' %}" class="flex items-center p-2 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white group">
+                           <i class="fas fa-chart-bar w-5 h-5 text-gray-400 group-hover:text-yellow-400 transition-colors"></i>
+                           <span class="ml-3">Reportes</span>
+                        </a>
+                    </li>
+                     <li>
+                        <a href="{% url 'bitacora:configuracion' %}" class="flex items-center p-2 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white group">
+                           <i class="fas fa-cog w-5 h-5 text-gray-400 group-hover:text-yellow-400 transition-colors"></i>
+                           <span class="ml-3">Configuración</span>
+                        </a>
+                    </li>
+                    <!-- BOTÓN DE CERRAR SESIÓN MOVIDO AQUÍ -->
+                    <li class="!mt-auto pt-4 border-t border-gray-700">
+                         <a href="{% url 'bitacora:logout_view' %}" class="flex items-center p-2 text-gray-300 rounded-lg hover:bg-red-800 hover:text-white group">
+                            <i class="fas fa-sign-out-alt w-5 h-5 text-gray-400 group-hover:text-white transition-colors"></i>
+                            <span class="ml-3">Cerrar Sesión</span>
+                         </a>
+                    </li>
+                </ul>
+
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 sm:ml-64">
+            <!-- Header for Mobile (adaptado a tema claro) -->
+            <header class="bg-white p-4 sm:hidden flex items-center justify-between sticky top-0 z-20 border-b border-gray-200">
+                <a href="{% url 'bitacora:panel_empleados' %}" class="flex items-center">
+                    <span class="text-xl font-bold text-gray-800">Mixtemiches</span>
+                </a>
+                <button id="open-sidebar-btn" type="button" class="inline-flex items-center p-2 text-sm text-gray-500 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200">
+                    <span class="sr-only">Open sidebar</span>
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </header>
+            
+            <main class="flex-1 overflow-y-auto">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const openBtn = document.getElementById('open-sidebar-btn');
+            const closeBtn = document.getElementById('close-sidebar-btn');
+
+            const openSidebar = () => {
+                if (sidebar) sidebar.classList.remove('-translate-x-full');
+                if (overlay) overlay.classList.remove('hidden');
+            };
+
+            const closeSidebar = () => {
+                if (sidebar) sidebar.classList.add('-translate-x-full');
+                if (overlay) overlay.classList.add('hidden');
+            };
+
+            if (openBtn) openBtn.addEventListener('click', openSidebar);
+            if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+            if (overlay) overlay.addEventListener('click', closeSidebar);
+        });
+    </script>
+</body>
+</html>
+

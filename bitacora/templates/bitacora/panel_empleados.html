@@ -1,0 +1,222 @@
+{% extends 'bitacora/master.html' %}
+
+{% block title %}Panel de Empleados{% endblock %}
+
+{% block content %}
+<div class="p-4 sm:p-6 md:p-8 space-y-10">
+    <!-- SECCIÓN DE EMPLEADOS ACTIVOS -->
+    <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-200">
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2 sm:mb-0">
+                <i class="fas fa-user-check mr-3 text-green-500"></i>Empleados Activos
+            </h1>
+            <a href="{% url 'bitacora:agregar_empleado' %}" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 shadow-md text-sm sm:text-base w-full sm:w-auto text-center">
+                <i class="fas fa-plus mr-2"></i>Añadir Empleado
+            </a>
+        </div>
+
+        <div class="overflow-x-auto rounded-lg">
+            <table class="w-full text-sm text-left text-gray-700">
+                <thead class="text-xs text-yellow-600 uppercase bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Nombre</th>
+                        <th scope="col" class="px-6 py-3 hidden md:table-cell">Puesto</th>
+                        <th scope="col" class="px-6 py-3 hidden lg:table-cell">Horario</th>
+                        <th scope="col" class="px-6 py-3 text-center">Marcar Asistencia</th>
+                        <th scope="col" class="px-6 py-3 text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for empleado in empleados_activos %}
+                    <tr class="bg-white border-b hover:bg-gray-50 transition duration-200">
+                        <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{{ empleado.nombre }} {{ empleado.apellido }}</th>
+                        <td class="px-6 py-4 hidden md:table-cell">{{ empleado.puesto|default:"No especificado" }}</td>
+                        <td class="px-6 py-4 hidden lg:table-cell">Ent: {{ empleado.hora_entrada_supuesta|time:"H:i" }} | Sal: {{ empleado.hora_salida_supuesta|time:"H:i" }}</td>
+                        <td class="px-6 py-4 text-center space-x-2">
+                            <!-- CAMBIO CLAVE: Añadido data-url con la URL generada por Django -->
+                            <button data-url="{% url 'bitacora:marcar_asistencia_panel' empleado.id 'entrada' %}" data-employee-name="{{ empleado.nombre }} {{ empleado.apellido }}" data-action="entrada" class="mark-attendance-btn bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg transition duration-300 text-xs" title="Marcar Entrada">
+                                <i class="fas fa-sign-in-alt"></i>
+                            </button>
+                            <button data-url="{% url 'bitacora:marcar_asistencia_panel' empleado.id 'salida' %}" data-employee-name="{{ empleado.nombre }} {{ empleado.apellido }}" data-action="salida" class="mark-attendance-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg transition duration-300 text-xs" title="Marcar Salida">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </button>
+                        </td>
+                        <td class="px-6 py-4 text-center space-x-2">
+                            <button data-qr-url="{% url 'bitacora:generar_qr_empleado' empleado.codigo_qr_unico %}" data-employee-name="{{ empleado.nombre }} {{ empleado.apellido }}" class="show-qr-btn bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-2 px-3 rounded-lg transition duration-300 text-xs" title="Ver QR"><i class="fas fa-qrcode"></i></button>
+                            <button data-deactivate-url="{% url 'bitacora:desactivar_empleado' empleado.id %}" data-employee-name="{{ empleado.nombre }} {{ empleado.apellido }}" class="deactivate-btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-lg transition duration-300 text-xs" title="Desactivar"><i class="fas fa-user-slash"></i></button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center py-10 px-6"><p class="text-gray-500 text-lg">No hay empleados activos.</p></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- SECCIÓN DE EMPLEADOS INACTIVOS -->
+    <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+        <div class="mb-6 pb-4 border-b border-gray-200">
+            <h2 class="text-2xl font-bold text-gray-800"><i class="fas fa-user-times mr-3 text-red-500"></i>Empleados Inactivos</h2>
+        </div>
+        <div class="overflow-x-auto rounded-lg">
+            <table class="w-full text-sm text-left text-gray-700">
+                 <thead class="text-xs text-yellow-600 uppercase bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Nombre</th>
+                        <th scope="col" class="px-6 py-3 hidden md:table-cell">Puesto</th>
+                        <th scope="col" class="px-6 py-3 text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for empleado in empleados_inactivos %}
+                    <tr class="bg-white border-b hover:bg-gray-50 transition duration-200 opacity-70">
+                        <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{{ empleado.nombre }} {{ empleado.apellido }}</th>
+                        <td class="px-6 py-4 hidden md:table-cell">{{ empleado.puesto|default:"No especificado" }}</td>
+                        <td class="px-6 py-4 text-center">
+                            <button data-reactivate-url="{% url 'bitacora:reactivar_empleado' empleado.id %}" data-employee-name="{{ empleado.nombre }} {{ empleado.apellido }}" class="reactivate-btn bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg transition duration-300 text-xs"><i class="fas fa-user-plus"></i></button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-center py-10 px-6"><p class="text-gray-500 text-lg">No hay empleados inactivos.</p></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODALS -->
+<div id="qr-modal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center hidden z-50"><div class="bg-white rounded-xl p-8 shadow-2xl text-center relative w-11/12 max-w-sm transform transition-all scale-95 opacity-0"><button id="close-qr-modal-btn" class="absolute -top-3 -right-3 text-white bg-red-600 rounded-full h-8 w-8 flex items-center justify-center text-lg hover:bg-red-700 transition">&times;</button><h3 id="modal-qr-employee-name" class="text-xl text-gray-800 font-bold mb-4"></h3><div class="bg-white p-2 rounded-md inline-block border"><img id="modal-qr-image" src="" alt="Código QR" class="w-60 h-60"></div><p class="text-gray-500 text-sm mt-4">Escanea este código para registrar la asistencia.</p></div></div>
+<div id="deactivate-modal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center hidden z-50"><div class="bg-white rounded-xl p-8 shadow-2xl text-center relative w-11/12 max-w-md transform transition-all scale-95 opacity-0"><h3 class="text-xl text-gray-800 font-bold mb-2">¿Estás seguro?</h3><p class="text-gray-600 mb-6">Vas a desactivar al empleado <strong id="deactivate-employee-name" class="font-bold"></strong>.</p><form id="deactivate-form" method="POST" action="">{% csrf_token %}<div class="flex justify-center gap-4"><button type="button" id="cancel-deactivate-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition">Cancelar</button><button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition">Confirmar</button></div></form></div></div>
+<div id="reactivate-modal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center hidden z-50"><div class="bg-white rounded-xl p-8 shadow-2xl text-center relative w-11/12 max-w-md transform transition-all scale-95 opacity-0"><h3 class="text-xl text-gray-800 font-bold mb-2">Confirmar Reactivación</h3><p class="text-gray-600 mb-6">Vas a reactivar al empleado <strong id="reactivate-employee-name" class="font-bold"></strong>.</p><form id="reactivate-form" method="POST" action="">{% csrf_token %}<div class="flex justify-center gap-4"><button type="button" id="cancel-reactivate-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition">Cancelar</button><button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition">Reactivar</button></div></form></div></div>
+<div id="attendance-modal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center hidden z-50"><div class="bg-white rounded-xl p-8 shadow-2xl text-center relative w-11/12 max-w-md transform transition-all scale-95 opacity-0"><h3 class="text-xl text-gray-800 font-bold mb-2">Confirmar Registro</h3><p class="text-gray-600 mb-6">Vas a registrar la <strong id="attendance-action-text" class="font-bold"></strong> para el empleado <strong id="attendance-employee-name" class="font-bold"></strong>.</p><form id="attendance-form" method="POST"><div class="flex justify-center gap-4"><button type="button" id="cancel-attendance-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition">Cancelar</button><button type="submit" id="confirm-attendance-btn" class="font-bold py-2 px-6 rounded-lg transition text-white">Confirmar</button></div></form></div></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Lógica para Modales ---
+    const qrModal = { el: document.getElementById('qr-modal'), content: document.getElementById('qr-modal')?.querySelector('.transform') };
+    const deactivateModal = { el: document.getElementById('deactivate-modal'), content: document.getElementById('deactivate-modal')?.querySelector('.transform') };
+    const reactivateModal = { el: document.getElementById('reactivate-modal'), content: document.getElementById('reactivate-modal')?.querySelector('.transform') };
+    const attendanceModal = { el: document.getElementById('attendance-modal'), content: document.getElementById('attendance-modal')?.querySelector('.transform') };
+
+    const openModal = (modal) => {
+        if (!modal.el) return;
+        modal.el.classList.remove('hidden');
+        setTimeout(() => { modal.content.style.transform = 'scale(1)'; modal.content.style.opacity = '1'; }, 50);
+    };
+    const closeModal = (modal) => {
+        if (!modal.el) return;
+        modal.content.style.transform = 'scale(0.95)'; modal.content.style.opacity = '0';
+        setTimeout(() => modal.el.classList.add('hidden'), 200);
+    };
+
+    // QR Modal
+    document.querySelectorAll('.show-qr-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            document.getElementById('modal-qr-image').src = button.dataset.qrUrl;
+            document.getElementById('modal-qr-employee-name').textContent = `Código QR de ${button.dataset.employeeName}`;
+            openModal(qrModal);
+        });
+    });
+    document.getElementById('close-qr-modal-btn')?.addEventListener('click', () => closeModal(qrModal));
+    qrModal.el?.addEventListener('click', e => { if (e.target === qrModal.el) closeModal(qrModal); });
+
+    // Deactivate Modal
+    document.querySelectorAll('.deactivate-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            document.getElementById('deactivate-form').action = button.dataset.deactivateUrl;
+            document.getElementById('deactivate-employee-name').textContent = button.dataset.employeeName;
+            openModal(deactivateModal);
+        });
+    });
+    document.getElementById('cancel-deactivate-btn')?.addEventListener('click', () => closeModal(deactivateModal));
+    deactivateModal.el?.addEventListener('click', e => { if (e.target === deactivateModal.el) closeModal(deactivateModal); });
+
+    // Reactivate Modal
+    document.querySelectorAll('.reactivate-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            document.getElementById('reactivate-form').action = button.dataset.reactivateUrl;
+            document.getElementById('reactivate-employee-name').textContent = button.dataset.employeeName;
+            openModal(reactivateModal);
+        });
+    });
+    document.getElementById('cancel-reactivate-btn')?.addEventListener('click', () => closeModal(reactivateModal));
+    reactivateModal.el?.addEventListener('click', e => { if (e.target === reactivateModal.el) closeModal(reactivateModal); });
+    
+    // Mark Attendance Modal
+    document.querySelectorAll('.mark-attendance-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            // CAMBIO CLAVE: Leer la URL directamente del botón
+            const url = button.dataset.url;
+            const action = button.dataset.action;
+            
+            document.getElementById('attendance-form').action = url;
+            document.getElementById('attendance-employee-name').textContent = button.dataset.employeeName;
+            
+            const actionText = document.getElementById('attendance-action-text');
+            const confirmBtn = document.getElementById('confirm-attendance-btn');
+            
+            if (action === 'entrada') {
+                actionText.textContent = 'ENTRADA';
+                confirmBtn.className = 'bg-green-600 hover:bg-green-700 font-bold py-2 px-6 rounded-lg transition text-white';
+            } else {
+                actionText.textContent = 'SALIDA';
+                confirmBtn.className = 'bg-blue-600 hover:bg-blue-700 font-bold py-2 px-6 rounded-lg transition text-white';
+            }
+
+            openModal(attendanceModal);
+        });
+    });
+    document.getElementById('cancel-attendance-btn')?.addEventListener('click', () => closeModal(attendanceModal));
+    attendanceModal.el?.addEventListener('click', e => { if (e.target === attendanceModal.el) closeModal(attendanceModal); });
+
+    // AJAX Submission for Attendance Form
+    const attendanceForm = document.getElementById('attendance-form');
+    if(attendanceForm) {
+        attendanceForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const url = this.action;
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                closeModal(attendanceModal);
+                // Usar location.reload() es simple, pero en el futuro se puede mejorar con una notificación
+                // sin tener que recargar toda la página.
+                if (data.status === 'success') {
+                    // Muestra una notificación de éxito
+                    alert(data.message);
+                    location.reload(); 
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ocurrió un error de conexión.');
+                closeModal(attendanceModal);
+            });
+        });
+    }
+
+    // Global Escape Key
+    document.addEventListener('keydown', e => {
+        if (e.key === "Escape") {
+            if (!qrModal.el?.classList.contains('hidden')) closeModal(qrModal);
+            if (!deactivateModal.el?.classList.contains('hidden')) closeModal(deactivateModal);
+            if (!reactivateModal.el?.classList.contains('hidden')) closeModal(reactivateModal);
+            if (!attendanceModal.el?.classList.contains('hidden')) closeModal(attendanceModal);
+        }
+    });
+});
+</script>
+{% endblock %}
+

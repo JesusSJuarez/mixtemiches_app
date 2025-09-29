@@ -1,0 +1,30 @@
+{% extends 'bitacora/master.html' %}
+
+{% block title %}Confirmar Acción para {{ empleado.nombre }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto text-center">
+    <div class="bg-white p-8 rounded-lg shadow-md">
+        <h1 class="text-2xl font-bold text-gray-800">
+            Confirmar Acción para:
+        </h1>
+        <p class="text-4xl font-bold text-brand-red mt-2">{{ empleado.nombre }} {{ empleado.apellido }}</p>
+        
+        <p class="mt-4 text-gray-600">
+            Por favor, selecciona la acción que deseas registrar para este empleado.
+        </p>
+
+        <div class="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+            <!-- Botón de Entrada -->
+            <a href="{% url 'bitacora:registrar_asistencia' codigo_empleado_uuid=empleado.codigo_qr_unico accion='entrada' %}" class="w-full sm:w-auto bg-green-600 text-white font-bold py-4 px-8 rounded-lg text-lg hover:bg-green-700 transition duration-300 ease-in-out transform hover:scale-105">
+                Registrar ENTRADA
+            </a>
+            
+            <!-- Botón de Salida -->
+            <a href="{% url 'bitacora:registrar_asistencia' codigo_empleado_uuid=empleado.codigo_qr_unico accion='salida' %}" class="w-full sm:w-auto bg-red-600 text-white font-bold py-4 px-8 rounded-lg text-lg hover:bg-red-700 transition duration-300 ease-in-out transform hover:scale-105">
+                Registrar SALIDA
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

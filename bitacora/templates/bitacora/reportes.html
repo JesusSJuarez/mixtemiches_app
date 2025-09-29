@@ -1,0 +1,168 @@
+{% extends 'bitacora/master.html' %}
+
+{% block title %}Reportes de Asistencia{% endblock %}
+
+{% block content %}
+<div class="p-4 sm:p-6 md:p-8">
+    <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+        
+        <!-- Cabecera y Filtros -->
+        <div class="mb-6 pb-4 border-b border-gray-200">
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-chart-bar mr-3 text-yellow-500"></i>Reportes de Asistencia
+            </h1>
+
+            <form method="get" action="{% url 'bitacora:reportes' %}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                <!-- Filtro por Empleado -->
+                <div>
+                    <label for="empleado" class="block mb-2 text-sm font-medium text-gray-700">Empleado</label>
+                    <select id="empleado" name="empleado_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-yellow-500 focus:border-yellow-500 block w-full p-2.5">
+                        <option value="">Todos</option>
+                        {% for emp in todos_los_empleados %}
+                            <option value="{{ emp.id }}" {% if emp.id|stringformat:"s" == request.GET.empleado_id %}selected{% endif %}>
+                                {{ emp.nombre }} {{ emp.apellido }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Filtro por Fecha -->
+                <div>
+                    <label for="fecha" class="block mb-2 text-sm font-medium text-gray-700">Fecha</label>
+                    <input type="date" id="fecha" name="fecha" value="{{ request.GET.fecha }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-yellow-500 focus:border-yellow-500 block w-full p-2.5">
+                </div>
+                
+                <!-- Botones de Acción -->
+                <div class="flex items-center space-x-2">
+                    <button type="submit" class="w-full text-white bg-red-600 hover:bg-red-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                        <i class="fas fa-filter mr-2"></i>Filtrar
+                    </button>
+                    <a href="{% url 'bitacora:reportes' %}" class="w-full text-gray-700 bg-gray-200 hover:bg-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                       Limpiar
+                    </a>
+                </div>
+
+                 <!-- Botón de Exportar -->
+                <div class="md:text-right">
+                     <a href="{% url 'bitacora:exportar_excel' %}?{{ request.GET.urlencode }}" class="w-full inline-block text-center text-white bg-green-600 hover:bg-green-700 font-medium rounded-lg text-sm px-5 py-2.5">
+                        <i class="fas fa-file-excel mr-2"></i>Exportar
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tabla de Resultados -->
+        <div class="overflow-x-auto rounded-lg">
+            <table class="w-full text-sm text-left text-gray-700">
+                <thead class="text-xs text-yellow-600 uppercase bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Empleado</th>
+                        <th scope="col" class="px-6 py-3">Fecha</th>
+                        <th scope="col" class="px-6 py-3">Hora Entrada</th>
+                        <th scope="col" class="px-6 py-3">Hora Salida</th>
+                        <th scope="col" class="px-6 py-3">Llegó Tarde</th>
+                        <th scope="col" class="px-6 py-3 text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for registro in registros %}
+                    <tr class="bg-white border-b hover:bg-gray-50 transition duration-200">
+                        <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{{ registro.empleado }}</th>
+                        <td class="px-6 py-4">{{ registro.fecha_hora_entrada|date:"d/m/Y" }}</td>
+                        <td class="px-6 py-4">{{ registro.fecha_hora_entrada|time:"H:i:s" }}</td>
+                        <td class="px-6 py-4">{{ registro.fecha_hora_salida|time:"H:i:s"|default:"--" }}</td>
+                        <td class="px-6 py-4">
+                            {% if registro.llego_tarde %}
+                                <span class="bg-red-100 text-red-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">Sí</span>
+                            {% else %}
+                                <span class="bg-green-100 text-green-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">No</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <button 
+                                data-delete-url="{% url 'bitacora:eliminar_registro' registro.id %}" 
+                                data-employee-name="{{ registro.empleado }}" 
+                                data-record-date="{{ registro.fecha_hora_entrada|date:'d/m/Y' }}"
+                                class="delete-record-btn bg-gray-200 hover:bg-red-500 text-gray-600 hover:text-white font-bold py-2 px-3 rounded-lg transition duration-300 text-xs"
+                                title="Eliminar este registro">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-10 px-6">
+                            <p class="text-gray-500 text-lg">No hay registros que coincidan con los filtros.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE CONFIRMACIÓN PARA ELIMINAR -->
+<div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-xl p-8 shadow-2xl text-center relative w-11/12 max-w-md transform transition-all scale-95 opacity-0">
+        <h3 class="text-xl text-gray-800 font-bold mb-2">¿Estás seguro?</h3>
+        <p class="text-gray-600 mb-6">
+            Vas a eliminar permanentemente el registro de asistencia de <strong id="delete-employee-name" class="font-bold"></strong> del día <strong id="delete-record-date" class="font-bold"></strong>.
+        </p>
+        <form id="delete-form" method="POST" action="">
+            {% csrf_token %}
+            <div class="flex justify-center gap-4">
+                <button type="button" id="cancel-delete-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition">Cancelar</button>
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition">Confirmar Eliminación</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Lógica para Modal de Eliminación ---
+    const deleteModal = { 
+        el: document.getElementById('delete-modal'), 
+        content: document.getElementById('delete-modal')?.querySelector('.transform') 
+    };
+
+    const openModal = (modal) => {
+        if (!modal.el) return;
+        modal.el.classList.remove('hidden');
+        setTimeout(() => { 
+            modal.content.style.transform = 'scale(1)'; 
+            modal.content.style.opacity = '1'; 
+        }, 50);
+    };
+
+    const closeModal = (modal) => {
+        if (!modal.el) return;
+        modal.content.style.transform = 'scale(0.95)'; 
+        modal.content.style.opacity = '0';
+        setTimeout(() => modal.el.classList.add('hidden'), 200);
+    };
+
+    document.querySelectorAll('.delete-record-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            document.getElementById('delete-form').action = button.dataset.deleteUrl;
+            document.getElementById('delete-employee-name').textContent = button.dataset.employeeName;
+            document.getElementById('delete-record-date').textContent = button.dataset.recordDate;
+            openModal(deleteModal);
+        });
+    });
+
+    document.getElementById('cancel-delete-btn')?.addEventListener('click', () => closeModal(deleteModal));
+    deleteModal.el?.addEventListener('click', e => { 
+        if (e.target === deleteModal.el) closeModal(deleteModal); 
+    });
+    
+    document.addEventListener('keydown', e => {
+        if (e.key === "Escape" && !deleteModal.el?.classList.contains('hidden')) {
+            closeModal(deleteModal);
+        }
+    });
+});
+</script>
+{% endblock %}
+

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Mixtemiches</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos personalizados para la paleta de colores */
+        .bg-brand-yellow { background-color: #FFC700; }
+        .bg-brand-red { background-color: #D50000; }
+        .hover\:bg-brand-red-dark:hover { background-color: #b70000; }
+    </style>
+</head>
+<body class="bg-brand-yellow flex items-center justify-center min-h-screen">
+
+    <div class="w-full max-w-md p-8 space-y-8 bg-white rounded-2xl shadow-lg">
+        <div class="text-center">
+            <h1 class="text-4xl font-extrabold text-black">Mixtemiches</h1>
+            <p class="mt-2 text-gray-600">Panel de Administración de Asistencias</p>
+        </div>
+
+        <form class="mt-8 space-y-6" method="POST" action="{% url 'bitacora:login_view' %}">
+            {% csrf_token %}
+            
+            <!-- ÚNICO CAMBIO: Campo oculto para la redirección -->
+            <input type="hidden" name="next" value="{{ request.GET.next }}">
+
+            {% if form.non_field_errors %}
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                    <strong class="font-bold">Error:</strong>
+                    <span class="block sm:inline">{{ form.non_field_errors.as_text }}</span>
+                </div>
+            {% endif %}
+
+            <div class="rounded-md shadow-sm -space-y-px">
+                <div>
+                    <label for="id_username" class="sr-only">Usuario</label>
+                    <input id="id_username" name="username" type="text" required class="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-brand-red focus:border-brand-red focus:z-10 sm:text-sm" placeholder="Nombre de usuario">
+                </div>
+                <div>
+                    <label for="id_password" class="sr-only">Contraseña</label>
+                    <input id="id_password" name="password" type="password" required class="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-brand-red focus:border-brand-red focus:z-10 sm:text-sm" placeholder="Contraseña">
+                </div>
+            </div>
+
+            <div>
+                <button type="submit" class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-brand-red hover:bg-brand-red-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition">
+                    Iniciar Sesión
+                </button>
+            </div>
+        </form>
+    </div>
+
+</body>
+</html>
+
