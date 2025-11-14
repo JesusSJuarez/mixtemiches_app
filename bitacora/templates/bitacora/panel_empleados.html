@@ -4,6 +4,19 @@
 
 {% block content %}
 <div class="p-4 sm:p-6 md:p-8 space-y-10">
+
+    <!-- Mensajes de Éxito (Añadido) -->
+    {% if messages %}
+        {% for message in messages %}
+            {% if message.tags == 'success' %}
+            <div class="mb-4 p-4 text-sm rounded-lg bg-green-100 text-green-700" role="alert">
+                {{ message }}
+            </div>
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+
+
     <!-- SECCIÓN DE EMPLEADOS ACTIVOS -->
     <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-200">
@@ -41,6 +54,10 @@
                             </button>
                         </td>
                         <td class="px-6 py-4 text-center space-x-2">
+                            <!-- --- NUEVO BOTÓN DE EDITAR --- -->
+                            <a href="{% url 'bitacora:editar_empleado' empleado.id %}" class="inline-block bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg transition duration-300 text-xs" title="Editar Empleado">
+                                <i class="fas fa-pencil-alt"></i>
+                            </a>
                             <button data-qr-url="{% url 'bitacora:generar_qr_empleado' empleado.codigo_qr_unico %}" data-employee-name="{{ empleado.nombre }} {{ empleado.apellido }}" class="show-qr-btn bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-2 px-3 rounded-lg transition duration-300 text-xs" title="Ver QR"><i class="fas fa-qrcode"></i></button>
                             <button data-deactivate-url="{% url 'bitacora:desactivar_empleado' empleado.id %}" data-employee-name="{{ empleado.nombre }} {{ empleado.apellido }}" class="deactivate-btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-lg transition duration-300 text-xs" title="Desactivar"><i class="fas fa-user-slash"></i></button>
                         </td>
@@ -94,21 +111,19 @@
             <img id="modal-qr-image" src="" alt="Código QR" class="w-60 h-60">
         </div>
         <p class="text-gray-500 text-sm mt-4">Escanea este código para registrar la asistencia.</p>
-        <!-- NUEVO BOTÓN DE DESCARGA -->
         <a id="download-qr-btn" href="#" download="codigo_qr.png" class="mt-6 inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
             <i class="fas fa-download mr-2"></i>Descargar QR
         </a>
     </div>
 </div>
 <div id="deactivate-modal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center hidden z-50"><div class="bg-white rounded-xl p-8 shadow-2xl text-center relative w-11/12 max-w-md transform transition-all scale-95 opacity-0"><h3 class="text-xl text-gray-800 font-bold mb-2">¿Estás seguro?</h3><p class="text-gray-600 mb-6">Vas a desactivar al empleado <strong id="deactivate-employee-name" class="font-bold"></strong>.</p><form id="deactivate-form" method="POST" action="">{% csrf_token %}<div class="flex justify-center gap-4"><button type="button" id="cancel-deactivate-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition">Cancelar</button><button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition">Confirmar</button></div></form></div></div>
-<div id="reactivate-modal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center hidden z-50"><div class="bg-white rounded-xl p-8 shadow-2xl text-center relative w-11/12 max-w-md transform transition-all scale-95 opacity-0"><h3 class="text-xl text-gray-800 font-bold mb-2">Confirmar Reactivación</h3><p class="text-gray-600 mb-6">Vas a reactivar al empleado <strong id="reactivate-employee-name" class="font-bold"></strong>.</p><form id="reactivate-form" method="POST" action="">{% csrf_token %}<div class="flex justify-center gap-4"><button type="button" id="cancel-reactivate-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition">Cancelar</button><button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition">Reactivar</button></div></form></div></div>
+<div id="reactivate-modal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center hidden z-50"><div class="bg-white rounded-xl p-8 shadow-2xl text-center relative w-11/12 max-w-md transform transition-all scale-95 opacity-0"><h3 class="text-xl text-gray-800 font-bold mb-2">Confirmar Reactivación</h3><p class="text-gray-600 mb-6">Vas a reactivar al empleado <strong id="reactivate-employee-name" class="font-bold"></strong>.</p<form id="reactivate-form" method="POST" action="">{% csrf_token %}<div class="flex justify-center gap-4"><button type="button" id="cancel-reactivate-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition">Cancelar</button><button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition">Reactivar</button></div></form></div></div>
 <div id="attendance-modal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center hidden z-50"><div class="bg-white rounded-xl p-8 shadow-2xl text-center relative w-11/12 max-w-md transform transition-all scale-95 opacity-0"><h3 class="text-xl text-gray-800 font-bold mb-2">Confirmar Registro</h3><p class="text-gray-600 mb-6">Vas a registrar la <strong id="attendance-action-text" class="font-bold"></strong> para el empleado <strong id="attendance-employee-name" class="font-bold"></strong>.</p><form id="attendance-form" method="POST"><div class="flex justify-center gap-4"><button type="button" id="cancel-attendance-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition">Cancelar</button><button type="submit" id="confirm-attendance-btn" class="font-bold py-2 px-6 rounded-lg transition text-white">Confirmar</button></div></form></div></div>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     // --- Lógica para Modales ---
     const qrModal = { el: document.getElementById('qr-modal'), content: document.getElementById('qr-modal')?.querySelector('.transform') };
-    // ... (resto de los modales)
     const deactivateModal = { el: document.getElementById('deactivate-modal'), content: document.getElementById('deactivate-modal')?.querySelector('.transform') };
     const reactivateModal = { el: document.getElementById('reactivate-modal'), content: document.getElementById('reactivate-modal')?.querySelector('.transform') };
     const attendanceModal = { el: document.getElementById('attendance-modal'), content: document.getElementById('attendance-modal')?.querySelector('.transform') };
@@ -211,11 +226,10 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(response => response.json())
             .then(data => {
                 closeModal(attendanceModal);
+                // Usamos alert nativo, ya que no hay un modal de "éxito" genérico
+                alert(data.message); 
                 if (data.status === 'success') {
-                    alert(data.message);
                     location.reload(); 
-                } else {
-                    alert('Error: ' + data.message);
                 }
             })
             .catch(error => {
@@ -238,4 +252,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 {% endblock %}
-

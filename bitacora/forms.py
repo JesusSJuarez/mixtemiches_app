@@ -30,6 +30,7 @@ class EmpleadoForm(forms.ModelForm):
         }
         
 class ConfiguracionForm(forms.ModelForm):
+    # Formulario para la configuración general y AÑADIR nuevos administradores
     nuevo_admin_usuario = forms.CharField(
         label="Nuevo administrador (usuario)",
         max_length=100, 
@@ -49,9 +50,12 @@ class ConfiguracionForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         common_classes = "bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-yellow-500 focus:border-yellow-500 block w-full p-2.5"
-        # Aplicar estilos a todos los campos, incluyendo los que no son del modelo
+        # Aplicar estilos a todos los campos
         for field_name, field in self.fields.items():
             field.widget.attrs['class'] = common_classes
+            if field_name == 'nuevo_admin_password':
+                 field.widget.attrs['placeholder'] = '••••••••'
+
     
     def clean(self):
         cleaned_data = super().clean()
@@ -65,3 +69,38 @@ class ConfiguracionForm(forms.ModelForm):
             self.add_error('nuevo_admin_usuario', "Este nombre de usuario ya existe.")
 
         return cleaned_data
+
+class AdminUpdateForm(forms.ModelForm):
+    # Formulario para EDITAR administradores existentes
+    password = forms.CharField(
+        label="Nueva contraseña",
+        widget=forms.PasswordInput,
+        required=False,
+        help_text="Deja en blanco para no cambiar la contraseña."
+    )
+
+    class Meta:
+        model = User
+        fields = ['username', 'first_name', 'last_name', 'email']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        common_classes = "bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-yellow-500 focus:border-yellow-500 block w-full p-2.5"
+        # Aplicar estilos
+        for field_name, field in self.fields.items():
+            field.widget.attrs['class'] = common_classes
+            if field_name == 'password':
+                field.widget.attrs['placeholder'] = '••••••••'
+
+    def save(self, commit=True):
+        # Sobrescribimos el método save para manejar la contraseña
+        user = super().save(commit=False)
+        password = self.cleaned_data.get("password")
+        
+        if password:
+            user.set_password(password)
+            
+        if commit:
+            user.save()
+            
+        return user

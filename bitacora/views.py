@@ -8,7 +8,8 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 from datetime import datetime
 from .models import Empleado, RegistroAsistencia, Configuracion
-from .forms import EmpleadoForm, ConfiguracionForm
+# Se importa el nuevo formulario
+from .forms import EmpleadoForm, ConfiguracionForm, AdminUpdateForm
 import qrcode
 import io
 from openpyxl import Workbook
@@ -63,12 +64,37 @@ def agregar_empleado(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
         form = EmpleadoForm(request.POST)
         if form.is_valid():
-            form.save()
+            empleado_guardado = form.save()
+            # Añadimos un mensaje de éxito
+            messages.success(request, f'¡Empleado "{empleado_guardado.nombre}" agregado con éxito!')
             return redirect('bitacora:panel_empleados')
     else:
         form = EmpleadoForm()
     
     return render(request, 'bitacora/agregar_empleado.html', {'form': form})
+
+# --- Nueva vista para editar empleado ---
+@login_required
+def editar_empleado_view(request: HttpRequest, empleado_id: int) -> HttpResponse:
+    empleado = get_object_or_404(Empleado, id=empleado_id)
+    
+    if request.method == 'POST':
+        # Pasamos la instancia para que el formulario sepa que está editando
+        form = EmpleadoForm(request.POST, instance=empleado)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'¡Empleado "{empleado.nombre}" actualizado correctamente!')
+            return redirect('bitacora:panel_empleados')
+    else:
+        # Pasamos la instancia para rellenar el formulario con datos existentes
+        form = EmpleadoForm(instance=empleado)
+        
+    context = {
+        'form': form,
+        'empleado': empleado # La pasamos para usar el nombre en el template
+    }
+    return render(request, 'bitacora/editar_empleado.html', context)
+
 
 @login_required
 @require_POST
@@ -312,11 +338,14 @@ def eliminar_registro_asistencia(request: HttpRequest, registro_id: int) -> Http
     registro.delete()
     return redirect('bitacora:reportes')
 
-# --- Vista de Configuración ---
+# --- Vistas de Configuración y Administración ---
 
 @login_required
 def configuracion_view(request: HttpRequest) -> HttpResponse:
     config, created = Configuracion.objects.get_or_create(id=1)
+    
+    # Obtener todos los superusuarios (administradores)
+    admins = User.objects.filter(is_superuser=True).order_by('username')
 
     if request.method == 'POST':
         form = ConfiguracionForm(request.POST, instance=config)
@@ -327,16 +356,55 @@ def configuracion_view(request: HttpRequest) -> HttpResponse:
             nuevo_password = form.cleaned_data.get('nuevo_admin_password')
 
             if nuevo_usuario and nuevo_password:
-                if User.objects.filter(username=nuevo_usuario).exists():
-                     messages.error(request, f'El usuario "{nuevo_usuario}" ya existe.')
-                else:
-                    User.objects.create_superuser(username=nuevo_usuario, password=nuevo_password)
-                    messages.success(request, f'¡Administrador "{nuevo_usuario}" creado con éxito!')
+                # La validación de existencia de usuario ya está en el form.clean()
+                User.objects.create_superuser(username=nuevo_usuario, password=nuevo_password)
+                messages.success(request, f'¡Administrador "{nuevo_usuario}" creado con éxito!')
 
-            messages.success(request, '¡Configuración guardada correctamente!')
+            # Evitar doble mensaje de éxito si solo se creó un usuario
+            if not (nuevo_usuario and nuevo_password):
+                 messages.success(request, '¡Configuración guardada correctamente!')
+                 
             return redirect('bitacora:configuracion')
     else:
         form = ConfiguracionForm(instance=config)
 
-    return render(request, 'bitacora/configuracion.html', {'form': form})
+    context = {
+        'form': form,
+        'admins': admins  # Añadir lista de admins al contexto
+    }
+    return render(request, 'bitacora/configuracion.html', context)
 
+@login_required
+def editar_admin_view(request: HttpRequest, user_id: int) -> HttpResponse:
+    # Solo se pueden editar superusuarios
+    user = get_object_or_404(User, id=user_id, is_superuser=True)
+    
+    if request.method == 'POST':
+        form = AdminUpdateForm(request.POST, instance=user)
+        if form.is_valid():
+            form.save() # El método save() del formulario se encarga de la contraseña
+            messages.success(request, f'¡Usuario "{user.username}" actualizado correctamente!')
+            return redirect('bitacora:configuracion')
+    else:
+        form = AdminUpdateForm(instance=user)
+
+    context = {
+        'form': form,
+        'admin_user': user # Para mostrar el nombre en el título, etc.
+    }
+    return render(request, 'bitacora/editar_admin.html', context)
+
+@login_required
+@require_POST
+def eliminar_admin_view(request: HttpRequest, user_id: int) -> HttpResponse:
+    user = get_object_or_404(User, id=user_id, is_superuser=True)
+    
+    # Comprobación de seguridad: No permitir que un usuario se elimine a sí mismo
+    if request.user.id == user.id:
+        messages.error(request, 'Error: No puedes eliminar tu propia cuenta de administrador.')
+        return redirect('bitacora:configuracion')
+        
+    username = user.username
+    user.delete()
+    messages.success(request, f'¡Administrador "{username}" eliminado con éxito!')
+    return redirect('bitacora:configuracion')

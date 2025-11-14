@@ -1,0 +1,77 @@
+{% extends 'bitacora/master.html' %}
+
+{% block title %}Editar Administrador: {{ admin_user.username }}{% endblock %}
+
+{% block content %}
+<div class="p-4 sm:p-6 md:p-8 max-w-2xl mx-auto">
+    
+    <div class="mb-6">
+        <a href="{% url 'bitacora:configuracion' %}" class="text-sm font-medium text-gray-600 hover:text-gray-900">
+            <i class="fas fa-arrow-left mr-2"></i>Volver a Configuración
+        </a>
+    </div>
+
+    <div class="bg-white rounded-xl p-6 sm:p-8 shadow-lg border border-gray-200">
+        
+        <div class="mb-6 pb-4 border-b border-gray-200">
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">
+                <i class="fas fa-user-edit mr-3 text-yellow-500"></i>Editar Administrador
+            </h1>
+            <p class="mt-1 text-sm text-gray-600">Estás editando al usuario: <strong class="font-medium">{{ admin_user.username }}</strong></p>
+        </div>
+
+        {% if form.errors %}
+            <div class="mb-4 p-4 text-sm rounded-lg bg-red-100 text-red-700" role="alert">
+                Por favor, corrige los errores a continuación.
+            </div>
+        {% endif %}
+
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+            
+            <div>
+                <label for="{{ form.username.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900">Nombre de Usuario</label>
+                {{ form.username }}
+                {% if form.username.errors %}<p class="mt-2 text-xs text-red-600">{{ form.username.errors|first }}</p>{% endif %}
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="{{ form.first_name.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900">Nombre</label>
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}<p class="mt-2 text-xs text-red-600">{{ form.first_name.errors|first }}</p>{% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.last_name.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900">Apellido</label>
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}<p class="mt-2 text-xs text-red-600">{{ form.last_name.errors|first }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div>
+                <label for="{{ form.email.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900">Correo Electrónico</label>
+                {{ form.email }}
+                {% if form.email.errors %}<p class="mt-2 text-xs text-red-600">{{ form.email.errors|first }}</p>{% endif %}
+            </div>
+
+            <div class="pt-4 border-t border-gray-200">
+                <label for="{{ form.password.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-900">Nueva Contraseña</label>
+                {{ form.password }}
+                {% if form.password.help_text %}
+                <p class="mt-2 text-xs text-gray-500">{{ form.password.help_text }}</p>
+                {% endif %}
+                {% if form.password.errors %}<p class="mt-2 text-xs text-red-600">{{ form.password.errors|first }}</p>{% endif %}
+            </div>
+
+            <div class="flex justify-end pt-4">
+                <a href="{% url 'bitacora:configuracion' %}" class="text-gray-700 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-6 py-3 text-center mr-3">
+                    Cancelar
+                </a>
+                <button type="submit" class="text-white bg-red-600 hover:bg-red-700 font-medium rounded-lg text-sm px-6 py-3 text-center">
+                    <i class="fas fa-save mr-2"></i>Guardar Cambios
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
