@@ -123,5 +123,6 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+CSRF_TRUSTED_ORIGINS = ['http://mixtequita.online','https://mixtequita.online']
 
 LOGIN_URL = 'bitacora:login_view'
