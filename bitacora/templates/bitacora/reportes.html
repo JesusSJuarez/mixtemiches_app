@@ -6,17 +6,28 @@
 <div class="p-4 sm:p-6 md:p-8">
     <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
         
-        <!-- Cabecera y Filtros -->
-        <div class="mb-6 pb-4 border-b border-gray-200">
-            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">
+        <!-- Cabecera -->
+        <div class="mb-6 pb-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-0">
                 <i class="fas fa-chart-bar mr-3 text-yellow-500"></i>Reportes de Asistencia
             </h1>
+            
+            <!-- Botón de Exportar -->
+            <div>
+                 <a href="{% url 'bitacora:exportar_excel' %}?{{ request.GET.urlencode }}" class="inline-flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition text-sm">
+                    <i class="fas fa-file-excel mr-2"></i>Exportar Excel
+                </a>
+            </div>
+        </div>
 
-            <form method="get" action="{% url 'bitacora:reportes' %}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
-                <!-- Filtro por Empleado -->
+        <!-- Sección de Filtros -->
+        <form method="get" action="{% url 'bitacora:reportes' %}" id="filter-form" class="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                
+                <!-- Filtro Empleado -->
                 <div>
-                    <label for="empleado" class="block mb-2 text-sm font-medium text-gray-700">Empleado</label>
-                    <select id="empleado" name="empleado_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-yellow-500 focus:border-yellow-500 block w-full p-2.5">
+                    <label for="empleado" class="block mb-2 text-sm font-bold text-gray-700">Empleado</label>
+                    <select id="empleado" name="empleado_id" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-yellow-500 focus:border-yellow-500 block w-full p-2.5">
                         <option value="">Todos</option>
                         {% for emp in todos_los_empleados %}
                             <option value="{{ emp.id }}" {% if emp.id|stringformat:"s" == request.GET.empleado_id %}selected{% endif %}>
@@ -26,83 +37,131 @@
                     </select>
                 </div>
 
-                <!-- Filtro por Fecha -->
+                <!-- Filtro Fecha Inicio -->
                 <div>
-                    <label for="fecha" class="block mb-2 text-sm font-medium text-gray-700">Fecha</label>
-                    <input type="date" id="fecha" name="fecha" value="{{ request.GET.fecha }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-yellow-500 focus:border-yellow-500 block w-full p-2.5">
+                    <label for="fecha_inicio" class="block mb-2 text-sm font-bold text-gray-700">Desde</label>
+                    <input type="date" id="fecha_inicio" name="fecha_inicio" value="{{ request.GET.fecha_inicio }}" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-yellow-500 focus:border-yellow-500 block w-full p-2.5">
+                </div>
+
+                <!-- Filtro Fecha Fin -->
+                <div>
+                    <label for="fecha_fin" class="block mb-2 text-sm font-bold text-gray-700">Hasta</label>
+                    <input type="date" id="fecha_fin" name="fecha_fin" value="{{ request.GET.fecha_fin }}" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-yellow-500 focus:border-yellow-500 block w-full p-2.5">
                 </div>
                 
                 <!-- Botones de Acción -->
-                <div class="flex items-center space-x-2">
-                    <button type="submit" class="w-full text-white bg-red-600 hover:bg-red-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
-                        <i class="fas fa-filter mr-2"></i>Filtrar
+                <div class="flex flex-col space-y-2">
+                    <button type="submit" class="w-full text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition">
+                        <i class="fas fa-search mr-2"></i>Buscar
                     </button>
-                    <a href="{% url 'bitacora:reportes' %}" class="w-full text-gray-700 bg-gray-200 hover:bg-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
-                       Limpiar
-                    </a>
+                    <!-- Atajos de Fechas (JS) -->
+                    <div class="flex space-x-2 justify-center text-xs text-blue-600 font-medium">
+                        <button type="button" onclick="setDates('today')" class="hover:underline">Hoy</button>
+                        <span>|</span>
+                        <button type="button" onclick="setDates('week')" class="hover:underline">Semana</button>
+                        <span>|</span>
+                        <button type="button" onclick="setDates('month')" class="hover:underline">Mes</button>
+                    </div>
                 </div>
+            </div>
 
-                 <!-- Botón de Exportar -->
-                <div class="md:text-right">
-                     <a href="{% url 'bitacora:exportar_excel' %}?{{ request.GET.urlencode }}" class="w-full inline-block text-center text-white bg-green-600 hover:bg-green-700 font-medium rounded-lg text-sm px-5 py-2.5">
-                        <i class="fas fa-file-excel mr-2"></i>Exportar
-                    </a>
+            <!-- Toggle: Ver Cálculo de Horas -->
+            <div class="mt-4 pt-4 border-t border-gray-200 flex items-center">
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" name="ver_horas" class="sr-only peer" {% if ver_horas %}checked{% endif %} onchange="document.getElementById('filter-form').submit()">
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
+                    <span class="ml-3 text-sm font-bold text-gray-800">Modo: Cálculo de Horas Trabajadas</span>
+                </label>
+            </div>
+        </form>
+
+
+        {% if ver_horas %}
+            <!-- --- VISTA DE RESUMEN DE HORAS --- -->
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                <h2 class="text-lg font-bold text-yellow-800 mb-2"><i class="fas fa-clock mr-2"></i>Resumen de Horas (Periodo Seleccionado)</h2>
+                <p class="text-sm text-yellow-700 mb-4">Mostrando el total de horas trabajadas para los filtros aplicados. Solo se suman los registros con entrada y salida completas.</p>
+                
+                <div class="overflow-x-auto rounded-lg shadow-sm border border-yellow-200">
+                    <table class="w-full text-sm text-left text-gray-700">
+                        <thead class="text-xs text-yellow-900 uppercase bg-yellow-100">
+                            <tr>
+                                <th scope="col" class="px-6 py-3">Empleado</th>
+                                <th scope="col" class="px-6 py-3 text-center">Días Trabajados</th>
+                                <th scope="col" class="px-6 py-3 text-center">Promedio (hrs/día)</th>
+                                <th scope="col" class="px-6 py-3 text-right">Total Horas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in resumen_horas %}
+                            <tr class="bg-white border-b hover:bg-yellow-50 transition">
+                                <th scope="row" class="px-6 py-4 font-bold text-gray-900">{{ item.nombre }}</th>
+                                <td class="px-6 py-4 text-center">{{ item.dias }}</td>
+                                <td class="px-6 py-4 text-center">{{ item.promedio }}h</td>
+                                <td class="px-6 py-4 text-right font-bold text-lg text-blue-700">{{ item.horas_str }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center py-6 text-gray-500">No hay datos para calcular en este periodo.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-            </form>
-        </div>
+            </div>
 
-        <!-- Tabla de Resultados -->
-        <div class="overflow-x-auto rounded-lg">
-            <table class="w-full text-sm text-left text-gray-700">
-                <thead class="text-xs text-yellow-600 uppercase bg-gray-50">
-                    <tr>
-                        <th scope="col" class="px-6 py-3">Empleado</th>
-                        <th scope="col" class="px-6 py-3">Fecha</th>
-                        <th scope="col" class="px-6 py-3">Hora Entrada</th>
-                        <th scope="col" class="px-6 py-3">Hora Salida</th>
-                        <th scope="col" class="px-6 py-3">Llegó Tarde</th>
-                        <th scope="col" class="px-6 py-3 text-center">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for registro in registros %}
-                    <tr class="bg-white border-b hover:bg-gray-50 transition duration-200">
-                        <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{{ registro.empleado }}</th>
-                        <td class="px-6 py-4">{{ registro.fecha_hora_entrada|date:"d/m/Y" }}</td>
-                        <td class="px-6 py-4">{{ registro.fecha_hora_entrada|time:"H:i:s" }}</td>
-                        <td class="px-6 py-4">{{ registro.fecha_hora_salida|time:"H:i:s"|default:"--" }}</td>
-                        <td class="px-6 py-4">
-                            {% if registro.llego_tarde %}
-                                <span class="bg-red-100 text-red-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">Sí</span>
-                            {% else %}
-                                <span class="bg-green-100 text-green-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">No</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-6 py-4 text-center">
-                            <button 
-                                data-delete-url="{% url 'bitacora:eliminar_registro' registro.id %}" 
-                                data-employee-name="{{ registro.empleado }}" 
-                                data-record-date="{{ registro.fecha_hora_entrada|date:'d/m/Y' }}"
-                                class="delete-record-btn bg-gray-200 hover:bg-red-500 text-gray-600 hover:text-white font-bold py-2 px-3 rounded-lg transition duration-300 text-xs"
-                                title="Eliminar este registro">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="6" class="text-center py-10 px-6">
-                            <p class="text-gray-500 text-lg">No hay registros que coincidan con los filtros.</p>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+        {% else %}
+            <!-- --- VISTA DE TABLA DETALLADA (Original) --- -->
+            <div class="overflow-x-auto rounded-lg">
+                <table class="w-full text-sm text-left text-gray-700">
+                    <thead class="text-xs text-yellow-600 uppercase bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Empleado</th>
+                            <th scope="col" class="px-6 py-3">Fecha</th>
+                            <th scope="col" class="px-6 py-3">Hora Entrada</th>
+                            <th scope="col" class="px-6 py-3">Hora Salida</th>
+                            <th scope="col" class="px-6 py-3">Llegó Tarde</th>
+                            <th scope="col" class="px-6 py-3 text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for registro in registros %}
+                        <tr class="bg-white border-b hover:bg-gray-50 transition duration-200">
+                            <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{{ registro.empleado }}</th>
+                            <td class="px-6 py-4">{{ registro.fecha_hora_entrada|date:"d/m/Y" }}</td>
+                            <td class="px-6 py-4">{{ registro.fecha_hora_entrada|time:"H:i:s" }}</td>
+                            <td class="px-6 py-4">{{ registro.fecha_hora_salida|time:"H:i:s"|default:"--" }}</td>
+                            <td class="px-6 py-4">
+                                {% if registro.llego_tarde %}
+                                    <span class="bg-red-100 text-red-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">Sí</span>
+                                {% else %}
+                                    <span class="bg-green-100 text-green-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">No</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                <button 
+                                    data-delete-url="{% url 'bitacora:eliminar_registro' registro.id %}" 
+                                    data-employee-name="{{ registro.empleado }}" 
+                                    data-record-date="{{ registro.fecha_hora_entrada|date:'d/m/Y' }}"
+                                    class="delete-record-btn bg-gray-200 hover:bg-red-500 text-gray-600 hover:text-white font-bold py-2 px-3 rounded-lg transition duration-300 text-xs"
+                                    title="Eliminar este registro">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-10 px-6">
+                                <p class="text-gray-500 text-lg">No hay registros que coincidan con los filtros.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
     </div>
 </div>
 
-<!-- MODAL DE CONFIRMACIÓN PARA ELIMINAR -->
+<!-- MODAL DE CONFIRMACIÓN PARA ELIMINAR (Igual que antes) -->
 <div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center hidden z-50">
     <div class="bg-white rounded-xl p-8 shadow-2xl text-center relative w-11/12 max-w-md transform transition-all scale-95 opacity-0">
         <h3 class="text-xl text-gray-800 font-bold mb-2">¿Estás seguro?</h3>
@@ -120,8 +179,34 @@
 </div>
 
 <script>
+    // Helper para establecer fechas rápidamente
+    function setDates(range) {
+        const today = new Date();
+        const inputInicio = document.getElementById('fecha_inicio');
+        const inputFin = document.getElementById('fecha_fin');
+        
+        const formatDate = (date) => date.toISOString().split('T')[0];
+
+        if (range === 'today') {
+            inputInicio.value = formatDate(today);
+            inputFin.value = formatDate(today);
+        } else if (range === 'week') {
+            const first = today.getDate() - today.getDay() + 1; // Lunes
+            const last = first + 6; // Domingo
+            const firstDay = new Date(today.setDate(first));
+            const lastDay = new Date(today.setDate(last));
+            inputInicio.value = formatDate(firstDay);
+            inputFin.value = formatDate(lastDay);
+        } else if (range === 'month') {
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            inputInicio.value = formatDate(firstDay);
+            inputFin.value = formatDate(lastDay);
+        }
+    }
+
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Lógica para Modal de Eliminación ---
+    // --- Lógica para Modal de Eliminación (Sin Cambios) ---
     const deleteModal = { 
         el: document.getElementById('delete-modal'), 
         content: document.getElementById('delete-modal')?.querySelector('.transform') 
@@ -165,4 +250,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 {% endblock %}
-

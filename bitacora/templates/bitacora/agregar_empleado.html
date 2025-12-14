@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="p-4 sm:p-6 md:p-8">
-    <div class="bg-gray-800 bg-opacity-80 backdrop-blur-sm rounded-xl p-6 shadow-2xl border border-gray-700 max-w-2xl mx-auto">
+    <div class="bg-gray-800 bg-opacity-80 backdrop-blur-sm rounded-xl p-6 shadow-2xl border border-gray-700 max-w-4xl mx-auto">
         
         <div class="mb-6 pb-4 border-b border-gray-600">
             <h1 class="text-2xl sm:text-3xl font-bold text-white">
@@ -30,20 +30,71 @@
                 <label for="{{ form.puesto.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-300">Puesto</label>
                 {{ form.puesto }}
             </div>
-            
-            <div>
-                <label for="{{ form.telefono.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-300">Teléfono</label>
-                {{ form.telefono }}
-            </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                    <label for="{{ form.hora_entrada_supuesta.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-300">Hora de Entrada Supuesta</label>
-                    {{ form.hora_entrada_supuesta }}
+            <!-- Sección de Horarios -->
+            <div class="bg-gray-700 bg-opacity-50 p-4 rounded-lg border border-gray-600">
+                <h3 class="text-lg font-semibold text-yellow-400 mb-4"><i class="far fa-clock mr-2"></i>Configuración de Horario</h3>
+                
+                <!-- Checkbox Toggle -->
+                <div class="flex items-center mb-6">
+                    {{ form.usa_horario_variable }}
+                    <label for="{{ form.usa_horario_variable.id_for_label }}" class="ml-3 text-sm font-medium text-white cursor-pointer select-none">
+                        Usar horarios distintos por día de la semana
+                    </label>
                 </div>
-                <div>
-                    <label for="{{ form.hora_salida_supuesta.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-300">Hora de Salida Supuesta</label>
-                    {{ form.hora_salida_supuesta }}
+
+                <!-- Horario General (se muestra por defecto) -->
+                <div id="horario-fijo-container" class="grid grid-cols-1 sm:grid-cols-2 gap-6 transition-all duration-300">
+                    <div>
+                        <label for="{{ form.hora_entrada_supuesta.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-300">Hora de Entrada General</label>
+                        {{ form.hora_entrada_supuesta }}
+                    </div>
+                    <div>
+                        <label for="{{ form.hora_salida_supuesta.id_for_label }}" class="block mb-2 text-sm font-medium text-gray-300">Hora de Salida General</label>
+                        {{ form.hora_salida_supuesta }}
+                    </div>
+                </div>
+
+                <!-- Horario Variable (oculto por defecto) -->
+                <div id="horario-variable-container" class="hidden mt-4 space-y-4">
+                    <p class="text-sm text-gray-400 italic mb-2">Deja en blanco entrada/salida si quieres usar valores por defecto, o marca "Descanso" para días libres.</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-gray-300">
+                            <thead class="text-xs text-yellow-500 uppercase bg-gray-800">
+                                <tr>
+                                    <th class="px-4 py-2">Día</th>
+                                    <th class="px-4 py-2">Entrada</th>
+                                    <th class="px-4 py-2">Salida</th>
+                                    <th class="px-4 py-2 text-center">Descanso</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for i in "0123456"|make_list %}
+                                <tr class="border-b border-gray-700 hover:bg-gray-600">
+                                    <td class="px-4 py-2 font-medium">
+                                        {% if i == '0' %}Lunes{% elif i == '1' %}Martes{% elif i == '2' %}Miércoles{% elif i == '3' %}Jueves{% elif i == '4' %}Viernes{% elif i == '5' %}Sábado{% else %}Domingo{% endif %}
+                                    </td>
+                                    <!-- Truco para acceder a campos dinámicos en template -->
+                                    <td class="px-4 py-2">
+                                        {% for field in form %}
+                                            {% if field.name == 'horario_'|add:i|add:'_entrada' %}{{ field }}{% endif %}
+                                        {% endfor %}
+                                    </td>
+                                    <td class="px-4 py-2">
+                                        {% for field in form %}
+                                            {% if field.name == 'horario_'|add:i|add:'_salida' %}{{ field }}{% endif %}
+                                        {% endfor %}
+                                    </td>
+                                    <td class="px-4 py-2 text-center">
+                                        {% for field in form %}
+                                            {% if field.name == 'horario_'|add:i|add:'_descanso' %}{{ field }}{% endif %}
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -51,6 +102,13 @@
                 <div class="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded-lg" role="alert">
                     <strong class="font-bold">Error:</strong>
                     <span class="block sm:inline">Por favor, corrige los errores indicados.</span>
+                    <ul class="mt-2 list-disc list-inside text-sm">
+                        {% for field, errors in form.errors.items %}
+                            {% for error in errors %}
+                                <li>{{ field }}: {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                    </ul>
                 </div>
             {% endif %}
 
@@ -63,4 +121,25 @@
         </form>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkbox = document.getElementById('{{ form.usa_horario_variable.id_for_label }}');
+        const fijoContainer = document.getElementById('horario-fijo-container');
+        const variableContainer = document.getElementById('horario-variable-container');
+
+        function toggleHorarios() {
+            if (checkbox.checked) {
+                fijoContainer.classList.add('opacity-50', 'pointer-events-none'); // Deshabilitar visualmente
+                variableContainer.classList.remove('hidden');
+            } else {
+                fijoContainer.classList.remove('opacity-50', 'pointer-events-none');
+                variableContainer.classList.add('hidden');
+            }
+        }
+
+        checkbox.addEventListener('change', toggleHorarios);
+        toggleHorarios(); // Ejecutar al inicio
+    });
+</script>
 {% endblock %}

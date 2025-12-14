@@ -6,17 +6,36 @@ from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.forms import AuthenticationForm
 from django.urls import reverse
 from django.views.decorators.http import require_POST
-from datetime import datetime
-from .models import Empleado, RegistroAsistencia, Configuracion
-# Se importa el nuevo formulario
+from datetime import datetime, timedelta
+from .models import Empleado, RegistroAsistencia, Configuracion, HorarioDia
 from .forms import EmpleadoForm, ConfiguracionForm, AdminUpdateForm
 import qrcode
 import io
 from openpyxl import Workbook
 from django.contrib.auth.models import User
 from django.contrib import messages
-# --- Nuevas importaciones para manipular imágenes ---
 from PIL import Image, ImageDraw, ImageFont
+
+# --- Función Auxiliar para obtener hora esperada ---
+def obtener_hora_entrada_esperada(empleado, fecha_dt):
+    """
+    Devuelve la hora de entrada supuesta para un empleado en una fecha dada.
+    Considera si tiene horario variable o fijo.
+    Retorna None si es día libre o no hay horario definido.
+    """
+    if not empleado.usa_horario_variable:
+        return empleado.hora_entrada_supuesta
+    
+    # 0=Lunes, 6=Domingo
+    dia_semana = fecha_dt.weekday()
+    try:
+        horario_dia = empleado.horarios_dias.get(dia_semana=dia_semana)
+        if horario_dia.es_dia_libre:
+            return None
+        return horario_dia.hora_entrada
+    except HorarioDia.DoesNotExist:
+        # Si no existe configuración específica para ese día, usamos la general como fallback
+        return empleado.hora_entrada_supuesta
 
 # --- Vistas de Autenticación ---
 
@@ -65,7 +84,6 @@ def agregar_empleado(request: HttpRequest) -> HttpResponse:
         form = EmpleadoForm(request.POST)
         if form.is_valid():
             empleado_guardado = form.save()
-            # Añadimos un mensaje de éxito
             messages.success(request, f'¡Empleado "{empleado_guardado.nombre}" agregado con éxito!')
             return redirect('bitacora:panel_empleados')
     else:
@@ -73,25 +91,22 @@ def agregar_empleado(request: HttpRequest) -> HttpResponse:
     
     return render(request, 'bitacora/agregar_empleado.html', {'form': form})
 
-# --- Nueva vista para editar empleado ---
 @login_required
 def editar_empleado_view(request: HttpRequest, empleado_id: int) -> HttpResponse:
     empleado = get_object_or_404(Empleado, id=empleado_id)
     
     if request.method == 'POST':
-        # Pasamos la instancia para que el formulario sepa que está editando
         form = EmpleadoForm(request.POST, instance=empleado)
         if form.is_valid():
             form.save()
             messages.success(request, f'¡Empleado "{empleado.nombre}" actualizado correctamente!')
             return redirect('bitacora:panel_empleados')
     else:
-        # Pasamos la instancia para rellenar el formulario con datos existentes
         form = EmpleadoForm(instance=empleado)
         
     context = {
         'form': form,
-        'empleado': empleado # La pasamos para usar el nombre en el template
+        'empleado': empleado 
     }
     return render(request, 'bitacora/editar_empleado.html', context)
 
@@ -130,11 +145,18 @@ def marcar_asistencia_panel(request: HttpRequest, empleado_id: int, accion: str)
         if ya_existe_entrada:
             return JsonResponse({'status': 'error', 'message': f"{empleado.nombre} ya tiene una entrada registrada hoy."})
         
-        hora_limite = (datetime.combine(ahora.date(), empleado.hora_entrada_supuesta) + timezone.timedelta(minutes=minutos_tolerancia)).time()
-        llego_tarde = ahora.time() > hora_limite
+        # --- Lógica de Horario Variable ---
+        hora_entrada_meta = obtener_hora_entrada_esperada(empleado, ahora)
+        
+        llego_tarde = False
+        if hora_entrada_meta:
+            hora_limite = (datetime.combine(ahora.date(), hora_entrada_meta) + timezone.timedelta(minutes=minutos_tolerancia)).time()
+            llego_tarde = ahora.time() > hora_limite
+        
         RegistroAsistencia.objects.create(empleado=empleado, fecha_hora_entrada=ahora, llego_tarde=llego_tarde)
         
-        return JsonResponse({'status': 'success', 'message': f"Entrada registrada para {empleado.nombre}."})
+        msg_extra = " (Llegó tarde)" if llego_tarde else ""
+        return JsonResponse({'status': 'success', 'message': f"Entrada registrada para {empleado.nombre}.{msg_extra}"})
 
     elif accion == 'salida':
         ultimo_registro = RegistroAsistencia.objects.filter(empleado=empleado, fecha_hora_salida__isnull=True).order_by('-fecha_hora_entrada').first()
@@ -241,8 +263,14 @@ def registrar_asistencia(request: HttpRequest, codigo_empleado_uuid: str, accion
             mensaje = f"Error: {empleado.nombre} ya tiene una entrada registrada hoy."
             es_error = True
         else:
-            hora_limite = (datetime.combine(ahora.date(), empleado.hora_entrada_supuesta) + timezone.timedelta(minutes=minutos_tolerancia)).time()
-            llego_tarde = ahora.time() > hora_limite
+            # --- Lógica de Horario Variable ---
+            hora_entrada_meta = obtener_hora_entrada_esperada(empleado, ahora)
+            llego_tarde = False
+            
+            if hora_entrada_meta:
+                hora_limite = (datetime.combine(ahora.date(), hora_entrada_meta) + timezone.timedelta(minutes=minutos_tolerancia)).time()
+                llego_tarde = ahora.time() > hora_limite
+
             RegistroAsistencia.objects.create(empleado=empleado, fecha_hora_entrada=ahora, llego_tarde=llego_tarde)
             mensaje = f"Entrada registrada para {empleado.nombre} a las {ahora.strftime('%H:%M:%S')}."
             if llego_tarde:
@@ -262,28 +290,78 @@ def registrar_asistencia(request: HttpRequest, codigo_empleado_uuid: str, accion
     context = {'mensaje': mensaje, 'es_error': es_error}
     return render(request, 'bitacora/resultado_registro.html', context)
 
-# --- Vistas de Reportes ---
+# --- Vistas de Reportes Actualizadas ---
 
 @login_required
 def reportes_view(request: HttpRequest) -> HttpResponse:
     registros = RegistroAsistencia.objects.select_related('empleado').order_by('-fecha_hora_entrada')
     
+    # Filtros
     empleado_id = request.GET.get('empleado_id')
-    fecha_str = request.GET.get('fecha')
+    fecha_inicio_str = request.GET.get('fecha_inicio')
+    fecha_fin_str = request.GET.get('fecha_fin')
+    ver_horas = request.GET.get('ver_horas') == 'on' # Toggle switch
 
     if empleado_id:
         registros = registros.filter(empleado_id=empleado_id)
     
-    if fecha_str:
+    # Filtro por rango de fechas
+    if fecha_inicio_str:
         try:
-            fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d').date()
-            registros = registros.filter(fecha_hora_entrada__date=fecha_obj)
+            fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+            registros = registros.filter(fecha_hora_entrada__date__gte=fecha_inicio)
         except ValueError:
             pass
+            
+    if fecha_fin_str:
+        try:
+            fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
+            registros = registros.filter(fecha_hora_entrada__date__lte=fecha_fin)
+        except ValueError:
+            pass
+
+    # Lógica de Resumen de Horas (Solo si se activa)
+    resumen_horas = []
+    total_general_segundos = 0
+    
+    if ver_horas:
+        # Agrupamos en memoria (diccionario) para sumar horas
+        datos_empleados = {}
+        
+        for reg in registros:
+            # Solo calculamos si hay entrada Y salida
+            if reg.fecha_hora_entrada and reg.fecha_hora_salida:
+                duracion = reg.fecha_hora_salida - reg.fecha_hora_entrada
+                segundos = duracion.total_seconds()
+                
+                emp_id = reg.empleado.id
+                emp_nombre = f"{reg.empleado.nombre} {reg.empleado.apellido}"
+                
+                if emp_id not in datos_empleados:
+                    datos_empleados[emp_id] = {'nombre': emp_nombre, 'total_segundos': 0, 'dias_trabajados': 0}
+                
+                datos_empleados[emp_id]['total_segundos'] += segundos
+                datos_empleados[emp_id]['dias_trabajados'] += 1
+        
+        # Convertimos a lista para el template
+        for datos in datos_empleados.values():
+            seg = int(datos['total_segundos'])
+            horas = seg // 3600
+            minutos = (seg % 3600) // 60
+            
+            resumen_horas.append({
+                'nombre': datos['nombre'],
+                'horas_str': f"{horas}h {minutos}m",
+                'dias': datos['dias_trabajados'],
+                'promedio': round((horas + minutos/60) / datos['dias_trabajados'], 1) if datos['dias_trabajados'] > 0 else 0
+            })
+            total_general_segundos += seg
 
     context = {
         'registros': registros,
         'todos_los_empleados': Empleado.objects.filter(is_active=True).order_by('nombre'),
+        'ver_horas': ver_horas,
+        'resumen_horas': resumen_horas,
     }
     return render(request, 'bitacora/reportes.html', context)
 
@@ -292,37 +370,51 @@ def exportar_excel_view(request: HttpRequest) -> HttpResponse:
     registros = RegistroAsistencia.objects.select_related('empleado').order_by('-fecha_hora_entrada')
     
     empleado_id = request.GET.get('empleado_id')
-    fecha_str = request.GET.get('fecha')
+    fecha_inicio_str = request.GET.get('fecha_inicio')
+    fecha_fin_str = request.GET.get('fecha_fin')
 
     if empleado_id:
         registros = registros.filter(empleado_id=empleado_id)
     
-    if fecha_str:
+    if fecha_inicio_str:
         try:
-            fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d').date()
-            registros = registros.filter(fecha_hora_entrada__date=fecha_obj)
-        except ValueError:
-            pass
+            fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+            registros = registros.filter(fecha_hora_entrada__date__gte=fecha_inicio)
+        except ValueError: pass
+        
+    if fecha_fin_str:
+        try:
+            fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
+            registros = registros.filter(fecha_hora_entrada__date__lte=fecha_fin)
+        except ValueError: pass
 
     wb = Workbook()
     ws = wb.active
     ws.title = "Reporte de Asistencia"
 
-    headers = ["ID Registro", "Empleado", "Fecha Entrada", "Hora Entrada", "Fecha Salida", "Hora Salida", "Llegó Tarde"]
+    headers = ["ID Registro", "Empleado", "Fecha Entrada", "Hora Entrada", "Fecha Salida", "Hora Salida", "Horas Trabajadas", "Llegó Tarde"]
     ws.append(headers)
 
     for registro in registros:
         local_entrada = timezone.localtime(registro.fecha_hora_entrada)
-        fecha_salida, hora_salida = '', ''
+        fecha_salida, hora_salida, horas_trabajadas = '', '', ''
+        
         if registro.fecha_hora_salida:
             local_salida = timezone.localtime(registro.fecha_hora_salida)
             fecha_salida = local_salida.strftime('%d/%m/%Y')
             hora_salida = local_salida.strftime('%H:%M:%S')
+            
+            duracion = registro.fecha_hora_salida - registro.fecha_hora_entrada
+            segundos = duracion.total_seconds()
+            h = int(segundos // 3600)
+            m = int((segundos % 3600) // 60)
+            horas_trabajadas = f"{h}h {m}m"
         
         ws.append([
             registro.id, str(registro.empleado),
             local_entrada.strftime('%d/%m/%Y'), local_entrada.strftime('%H:%M:%S'),
             fecha_salida, hora_salida,
+            horas_trabajadas,
             "Sí" if registro.llego_tarde else "No"
         ])
 
